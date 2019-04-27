@@ -1,11 +1,11 @@
 import { pubToAddress } from 'ethereumjs-util';
-import { HDPrivateKey, HDPublicKey } from 'bitcore-lib';
+import { HDPrivateKey, HDPublicKey } from '@owstack/key-lib';
 import assert from 'assert';
 var ec = require('elliptic').ec('secp256k1');
 
 function padTo32(msg) {
   while (msg.length < 32) {
-    msg = Buffer.concat([new Buffer([0]), msg]);
+    msg = Buffer.concat([Buffer.from([0]), msg]);
   }
   if (msg.length !== 32) {
     throw new Error(`invalid key length: ${msg.length}`);
@@ -13,8 +13,7 @@ function padTo32(msg) {
   return msg;
 }
 
-export default class EthereumBIP44 {
-
+class EthereumBIP44 {
     static fromPublicSeed(seed) {
         return new EthereumBIP44(new HDPublicKey(seed));
     }
@@ -25,7 +24,7 @@ export default class EthereumBIP44 {
 
     static bip32PublicToEthereumPublic(pubKey) {
         let key = ec.keyFromPublic(pubKey).getPublic().toJSON();
-        return Buffer.concat([padTo32(new Buffer(key[0].toArray())), padTo32(new Buffer(key[1].toArray()))]);
+        return Buffer.concat([padTo32(Buffer.from(key[0].toArray())), padTo32(Buffer.from(key[1].toArray()))]);
     }
 
     constructor(hdKey) {
@@ -44,13 +43,13 @@ export default class EthereumBIP44 {
     }
 
     derive(path) {
-        return this.key.derive(path);
+        return this.key.deriveChild(path);
     }
 
     getAddress(index) {
 
         let path = this.parts.slice(this.key.depth);
-        let derived = this.key.derive('m/' + (path.length > 0 ? path.join('/') + '/' : "") + index);
+        let derived = this.key.deriveChild('m/' + (path.length > 0 ? path.join('/') + '/' : "") + index);
         let address = pubToAddress(
             EthereumBIP44.bip32PublicToEthereumPublic(
                 derived.publicKey.toBuffer()
@@ -61,7 +60,9 @@ export default class EthereumBIP44 {
 
     getPrivateKey(index) {
       let path = this.parts.slice(this.key.depth);
-      let derived = this.key.derive('m/' + (path.length > 0 ? path.join('/') + '/' : "") + index);
+      let derived = this.key.deriveChild('m/' + (path.length > 0 ? path.join('/') + '/' : "") + index);
       return padTo32(derived.privateKey.toBuffer());
     }
 }
+
+module.exports = EthereumBIP44;
